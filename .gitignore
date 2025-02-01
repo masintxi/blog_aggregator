@@ -1,0 +1,42 @@
+# Ignore all files by default
+*
+
+# Allow files with extensions
+!*.*
+
+# Allow all directories and subdirectories
+!*/
+
+# Ignore log files
+*.log
+
+# Ignore test binaries
+*.test
+
+# Ignore binary files
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+
+# Ignore coverage reports
+*.out
+
+# Ignore Go workspace files
+go.work
+go.work.sum
+
+# Coverage files
+*.out
+
+# Ignore environment files
+.env
+
+# Allow LICENSE explicitly
+!LICENSE
+
+# IDE specific files
+.idea/
+.vscode/
