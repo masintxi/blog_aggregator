@@ -12,7 +12,10 @@ RETURNING *;
 SELECT * FROM users WHERE name = $1;
 
 -- name: ResetDB :exec
-TRUNCATE TABLE users;
+DELETE FROM users;
 
 -- name: ListUsers :many
 SELECT name FROM users;
+
+-- name: GetUserById :one
+SELECT name FROM users WHERE id = $1;

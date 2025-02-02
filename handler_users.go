@@ -70,6 +70,11 @@ func getUsersList(s *state, cmd command) error {
 		return fmt.Errorf("failed to retrive the list of users")
 	}
 
+	if len(users) == 0 {
+		fmt.Println("No users found.")
+		return nil
+	}
+
 	for _, user := range users {
 		if user == s.cfg.CurrentUserName {
 			fmt.Printf("* %s (current)\n", user)

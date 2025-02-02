@@ -40,6 +40,9 @@ func main() {
 	cmds.register("register", registerUser)
 	cmds.register("reset", resetUsersTable)
 	cmds.register("users", getUsersList)
+	cmds.register("agg", handleAgg)
+	cmds.register("addfeed", handleNewFeed)
+	cmds.register("feeds", getFeedsList)
 
 	if len(os.Args) < 2 {
 		log.Fatal("Not enough arguments")

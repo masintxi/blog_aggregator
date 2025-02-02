@@ -16,7 +16,7 @@ type Config struct {
 }
 
 /*
->> to migrate:
+>> to migrate, from the sql/schema dir:
 goose postgres <connection_string> up (or down)
 >> where <connection_string> is:
 postgres://postgres:postgres@localhost:5432/gator
