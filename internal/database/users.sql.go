@@ -64,33 +64,43 @@ func (q *Queries) GetUser(ctx context.Context, name string) (User, error) {
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT name FROM users WHERE id = $1
+SELECT id, created_at, updated_at, name FROM users WHERE id = $1
 `
 
-func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (string, error) {
+func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserById, id)
-	var name string
-	err := row.Scan(&name)
-	return name, err
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+	)
+	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT name FROM users
+SELECT id, created_at, updated_at, name FROM users
 `
 
-func (q *Queries) ListUsers(ctx context.Context) ([]string, error) {
+func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	rows, err := q.db.QueryContext(ctx, listUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []string
+	var items []User
 	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+		); err != nil {
 			return nil, err
 		}
-		items = append(items, name)
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

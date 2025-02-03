@@ -39,11 +39,11 @@ func getFeedsList(s *state, cmd command) error {
 	}
 
 	for _, feed := range feeds {
-		userName, err := s.db.GetUserById(context.Background(), feed.UserID)
+		user, err := s.db.GetUserById(context.Background(), feed.UserID)
 		if err != nil {
 			return fmt.Errorf("could not retrive the user: %w", err)
 		}
-		printFeedInfo(feed, userName)
+		printFeedInfo(feed, user.Name)
 		fmt.Println("------------------------------------------------------")
 		// fmt.Print("*")
 		// fmt.Printf(" Name: %s |", feed.Name)
@@ -58,18 +58,13 @@ func getFeedsList(s *state, cmd command) error {
 	return nil
 }
 
-func handleNewFeed(s *state, cmd command) error {
+func handleNewFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.args) < 2 {
 		return fmt.Errorf("not enough arguments received for the <%v> command, 2 required", cmd.name)
 	}
 
 	fName := cmd.args[0]
 	fUrl := cmd.args[1]
-
-	user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
-	if err != nil {
-		return err
-	}
 
 	feedArgs := database.CreateFeedParams{
 		ID:        uuid.New(),
@@ -87,12 +82,11 @@ func handleNewFeed(s *state, cmd command) error {
 	fmt.Printf("Feed <%s> created successfully:\n", fName)
 	printFeedInfo(feed, user.Name)
 
-	// var feedContent *RSSFeed
-	// feedContent, err = fetchFeed(context.Background(), fUrl)
-	// if err != nil {
-	// 	return err
-	// }
-	// fmt.Println(feedContent)
+	fFollow, err := generateFeedFollow(s, fUrl)
+	if err != nil {
+		return fmt.Errorf("failed following the feed: %w", err)
+	}
+	fmt.Printf("User <%s> is now following the feed <%s>\n", fFollow.UserName, fFollow.FeedName)
 
 	return nil
 }

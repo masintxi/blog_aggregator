@@ -41,8 +41,11 @@ func main() {
 	cmds.register("reset", resetUsersTable)
 	cmds.register("users", getUsersList)
 	cmds.register("agg", handleAgg)
-	cmds.register("addfeed", handleNewFeed)
+	cmds.register("addfeed", middlewareLoggedIn(handleNewFeed))
 	cmds.register("feeds", getFeedsList)
+	cmds.register("follow", middlewareLoggedIn(handleNewFollow))
+	cmds.register("following", middlewareLoggedIn(handleFollowsForUser))
+	cmds.register("unfollow", middlewareLoggedIn(handleUnfollow))
 
 	if len(os.Args) < 2 {
 		log.Fatal("Not enough arguments")

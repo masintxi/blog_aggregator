@@ -17,4 +17,10 @@ SELECT * FROM feeds INNER JOIN users ON feeds.user_id = users.id WHERE users.nam
 TRUNCATE TABLE feeds;
 
 -- name: ListFeeds :many
-SELECT * FROM feeds;
+SELECT * FROM feeds ORDER BY name;
+
+-- name: GetFeedByURL :one
+SELECT * FROM feeds WHERE url = $1;
+
+-- name: GetFeedByID :one
+SELECT * FROM feeds WHERE id = $1;

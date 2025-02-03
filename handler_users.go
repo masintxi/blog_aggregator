@@ -76,10 +76,10 @@ func getUsersList(s *state, cmd command) error {
 	}
 
 	for _, user := range users {
-		if user == s.cfg.CurrentUserName {
-			fmt.Printf("* %s (current)\n", user)
+		if user.Name == s.cfg.CurrentUserName {
+			fmt.Printf("* %s (current)\n", user.Name)
 		} else {
-			fmt.Printf("* %s\n", user)
+			fmt.Printf("* %s\n", user.Name)
 		}
 	}
 	return nil
