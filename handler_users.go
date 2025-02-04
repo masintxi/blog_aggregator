@@ -10,18 +10,12 @@ import (
 	"github.com/masintxi/blog_aggregator/internal/database"
 )
 
-func checkArgs(cmd command) (string, error) {
-	if len(cmd.args) == 0 {
-		return "", fmt.Errorf("no arguments received for the <%v> command", cmd.name)
-	}
-	return cmd.args[0], nil
-}
-
 func handlerLogin(s *state, cmd command) error {
-	userName, err := checkArgs(cmd)
+	err := checkArgs(cmd, 1)
 	if err != nil {
 		return err
 	}
+	userName := cmd.args[0]
 
 	_, err = s.db.GetUser(context.Background(), userName)
 	if err != nil {
@@ -37,10 +31,11 @@ func handlerLogin(s *state, cmd command) error {
 }
 
 func registerUser(s *state, cmd command) error {
-	userName, err := checkArgs(cmd)
+	err := checkArgs(cmd, 1)
 	if err != nil {
 		return err
 	}
+	userName := cmd.args[0]
 
 	userParams := database.CreateUserParams{
 		ID:        uuid.New(),

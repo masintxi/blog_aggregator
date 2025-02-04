@@ -11,8 +11,10 @@ import (
 )
 
 type state struct {
-	db  *database.Queries
-	cfg *config.Config
+	db       *database.Queries
+	cfg      *config.Config
+	newFeeds chan database.Feed
+	done     chan struct{}
 }
 
 func main() {
@@ -24,13 +26,15 @@ func main() {
 
 	db, err := sql.Open("postgres", cfg.DbURL)
 	if err != nil {
-		log.Fatal("error opening connexion to database")
+		log.Fatalf("error opening connexion to database: %v", err)
 	}
 	defer db.Close()
 
 	programState := &state{
-		db:  database.New(db),
-		cfg: &cfg,
+		db:       database.New(db),
+		cfg:      &cfg,
+		newFeeds: make(chan database.Feed, 100),
+		done:     make(chan struct{}),
 	}
 
 	cmds := commands{
@@ -42,10 +46,12 @@ func main() {
 	cmds.register("users", getUsersList)
 	cmds.register("agg", handleAgg)
 	cmds.register("addfeed", middlewareLoggedIn(handleNewFeed))
+	cmds.register("delfeed", deleteFeed)
 	cmds.register("feeds", getFeedsList)
 	cmds.register("follow", middlewareLoggedIn(handleNewFollow))
 	cmds.register("following", middlewareLoggedIn(handleFollowsForUser))
 	cmds.register("unfollow", middlewareLoggedIn(handleUnfollow))
+	cmds.register("browse", middlewareLoggedIn(handleBrowsePosts))
 
 	if len(os.Args) < 2 {
 		log.Fatal("Not enough arguments")

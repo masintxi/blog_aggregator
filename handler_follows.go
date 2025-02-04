@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,19 +11,37 @@ import (
 )
 
 func generateFeedFollow(s *state, fUrl string) (database.CreateFeedFollowRow, error) {
-	return s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
+	fFollow, err := s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Name:      s.cfg.CurrentUserName,
 		Url:       fUrl,
-	},
-	)
+	})
+
+	if err != nil {
+		return database.CreateFeedFollowRow{}, err
+	}
+
+	feed, err := s.db.GetFeedByURL(context.Background(), fUrl)
+	if err == nil {
+		select {
+		case s.newFeeds <- feed:
+			log.Printf("Successfully sent feed %s to channel", feed.Name)
+		default:
+			log.Printf("Warning: Channel full, feed <%s> will be processed in next batch", feed.Name)
+		}
+	} else {
+		log.Printf("Warning: Feed <%s> not found and will be processed in next batch: %v", feed.Name, err)
+	}
+
+	return fFollow, nil
 }
 
 func handleNewFollow(s *state, cmd command, user database.User) error {
-	if len(cmd.args) < 1 {
-		return fmt.Errorf("not enough arguments received for the <%v> command, 1 required", cmd.name)
+	err := checkArgs(cmd, 1)
+	if err != nil {
+		return err
 	}
 
 	fUrl := cmd.args[0]
@@ -55,13 +74,14 @@ func handleFollowsForUser(s *state, cmd command, user database.User) error {
 }
 
 func handleUnfollow(s *state, cmd command, user database.User) error {
-	if len(cmd.args) < 1 {
-		return fmt.Errorf("not enough arguments received for the <%v> command, 1 required", cmd.name)
+	err := checkArgs(cmd, 1)
+	if err != nil {
+		return err
 	}
 
 	fUrl := cmd.args[0]
 
-	err := s.db.DeleteFollowForUser(context.Background(), database.DeleteFollowForUserParams{
+	err = s.db.DeleteFollowForUser(context.Background(), database.DeleteFollowForUserParams{
 		Url:  fUrl,
 		Name: user.Name,
 	})

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/masintxi/blog_aggregator/internal/database"
 )
@@ -14,4 +15,16 @@ func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) 
 		}
 		return handler(s, cmd, user)
 	}
+}
+
+func checkArgs(cmd command, numArgs int) error {
+	if len(cmd.args) < numArgs {
+		return fmt.Errorf("the <%v> command requires %d arguments", cmd.name, numArgs)
+	}
+	return nil
+}
+
+func (s *state) cleanup() {
+	close(s.done)
+	close(s.newFeeds)
 }
