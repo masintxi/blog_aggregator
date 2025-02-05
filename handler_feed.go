@@ -3,14 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/masintxi/blog_aggregator/internal/database"
 )
 
-func getFeedsList(s *state, cmd command) error {
-	feeds, err := s.db.ListFeeds(context.Background())
+func getFeedsList(ctx context.Context, s *state, cmd command) error {
+	feeds, err := s.db.ListFeeds(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve the list of feeds: %w", err)
 	}
@@ -21,7 +23,7 @@ func getFeedsList(s *state, cmd command) error {
 	}
 
 	for _, feed := range feeds {
-		user, err := s.db.GetUserById(context.Background(), feed.UserID)
+		user, err := s.db.GetUserById(ctx, feed.UserID)
 		if err != nil {
 			return fmt.Errorf("could not retrive the user: %w", err)
 		}
@@ -31,7 +33,7 @@ func getFeedsList(s *state, cmd command) error {
 	return nil
 }
 
-func handleNewFeed(s *state, cmd command, user database.User) error {
+func handleNewFeed(ctx context.Context, s *state, cmd command, user database.User) error {
 	err := checkArgs(cmd, 2)
 	if err != nil {
 		return err
@@ -40,7 +42,7 @@ func handleNewFeed(s *state, cmd command, user database.User) error {
 	fName := cmd.args[0]
 	fUrl := cmd.args[1]
 
-	feed, err := s.db.CreateFeed(context.Background(), database.CreateFeedParams{
+	feed, err := s.db.CreateFeed(ctx, database.CreateFeedParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -54,11 +56,22 @@ func handleNewFeed(s *state, cmd command, user database.User) error {
 	fmt.Printf("Feed <%s> created successfully:\n", fName)
 	printFeedInfo(feed, user.Name)
 
-	fFollow, err := generateFeedFollow(s, fUrl)
+	fFollow, err := generateFeedFollow(ctx, s, fUrl)
 	if err != nil {
 		return fmt.Errorf("failed following the feed: %w", err)
 	}
 	fmt.Printf("User <%s> is now following the feed <%s>\n", fFollow.UserName, fFollow.FeedName)
+
+	originalOutput := log.Writer()
+	log.SetOutput(io.Discard)
+	err = scrapeFeed(context.Background(), s.db, feed)
+	log.SetOutput(originalOutput)
+
+	if err != nil {
+		log.Printf("Failed to scrape new feed <%s>: %v", feed.Name, err)
+	} else {
+		log.Printf("Succesfully scrapped the new feed <%s>", feed.Name)
+	}
 
 	return nil
 }
@@ -70,10 +83,10 @@ func printFeedInfo(feed database.Feed, userName string) {
 	fmt.Printf("* Name:          %s\n", feed.Name)
 	fmt.Printf("* URL:           %s\n", feed.Url)
 	fmt.Printf("* UserID:        %s\n", userName)
-	fmt.Printf("* LastFetchedAt: %v\n", feed.LastFetchedAt.Time)
+	//fmt.Printf("* LastFetchedAt: %v\n", feed.LastFetchedAt.Time)
 }
 
-func deleteFeed(s *state, cmd command) error {
+func deleteFeed(ctx context.Context, s *state, cmd command) error {
 	err := checkArgs(cmd, 1)
 	if err != nil {
 		return err
@@ -81,7 +94,7 @@ func deleteFeed(s *state, cmd command) error {
 
 	fUrl := cmd.args[0]
 
-	err = s.db.DeleteFeedByURL(context.Background(), fUrl)
+	err = s.db.DeleteFeedByURL(ctx, fUrl)
 	if err != nil {
 		fmt.Printf("could not delete the <%s> feed: %v\n", fUrl, err)
 	}

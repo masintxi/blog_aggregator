@@ -7,13 +7,13 @@ import (
 	"github.com/masintxi/blog_aggregator/internal/database"
 )
 
-func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
-	return func(s *state, cmd command) error {
-		user, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+func middlewareLoggedIn(handler func(ctx context.Context, s *state, cmd command, user database.User) error) func(context.Context, *state, command) error {
+	return func(ctx context.Context, s *state, cmd command) error {
+		user, err := s.db.GetUser(ctx, s.cfg.CurrentUserName)
 		if err != nil {
 			return err
 		}
-		return handler(s, cmd, user)
+		return handler(ctx, s, cmd, user)
 	}
 }
 
@@ -22,9 +22,4 @@ func checkArgs(cmd command, numArgs int) error {
 		return fmt.Errorf("the <%v> command requires %d arguments", cmd.name, numArgs)
 	}
 	return nil
-}
-
-func (s *state) cleanup() {
-	close(s.done)
-	close(s.newFeeds)
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/masintxi/blog_aggregator/internal/database"
 )
 
-func handleBrowsePosts(s *state, cmd command, user database.User) error {
+func handleBrowsePosts(ctx context.Context, s *state, cmd command, user database.User) error {
 	pLimit := 2
 	if len(cmd.args) > 0 {
 		if intVal, err := strconv.Atoi(cmd.args[0]); err == nil {
@@ -16,7 +16,7 @@ func handleBrowsePosts(s *state, cmd command, user database.User) error {
 		}
 	}
 
-	userPosts, err := s.db.GetPostsForUser(context.Background(), database.GetPostsForUserParams{
+	userPosts, err := s.db.GetPostsForUser(ctx, database.GetPostsForUserParams{
 		UserID: user.ID,
 		Limit:  int32(pLimit),
 	})

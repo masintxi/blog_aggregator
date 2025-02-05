@@ -3,42 +3,23 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/masintxi/blog_aggregator/internal/database"
 )
 
-func generateFeedFollow(s *state, fUrl string) (database.CreateFeedFollowRow, error) {
-	fFollow, err := s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
+func generateFeedFollow(ctx context.Context, s *state, fUrl string) (database.CreateFeedFollowRow, error) {
+	return s.db.CreateFeedFollow(ctx, database.CreateFeedFollowParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Name:      s.cfg.CurrentUserName,
 		Url:       fUrl,
 	})
-
-	if err != nil {
-		return database.CreateFeedFollowRow{}, err
-	}
-
-	feed, err := s.db.GetFeedByURL(context.Background(), fUrl)
-	if err == nil {
-		select {
-		case s.newFeeds <- feed:
-			log.Printf("Successfully sent feed %s to channel", feed.Name)
-		default:
-			log.Printf("Warning: Channel full, feed <%s> will be processed in next batch", feed.Name)
-		}
-	} else {
-		log.Printf("Warning: Feed <%s> not found and will be processed in next batch: %v", feed.Name, err)
-	}
-
-	return fFollow, nil
 }
 
-func handleNewFollow(s *state, cmd command, user database.User) error {
+func handleNewFollow(ctx context.Context, s *state, cmd command, user database.User) error {
 	err := checkArgs(cmd, 1)
 	if err != nil {
 		return err
@@ -46,7 +27,7 @@ func handleNewFollow(s *state, cmd command, user database.User) error {
 
 	fUrl := cmd.args[0]
 
-	fFollow, err := generateFeedFollow(s, fUrl)
+	fFollow, err := generateFeedFollow(ctx, s, fUrl)
 	if err != nil {
 		return fmt.Errorf("failed following the feed: %w", err)
 	}
@@ -55,8 +36,8 @@ func handleNewFollow(s *state, cmd command, user database.User) error {
 	return nil
 }
 
-func handleFollowsForUser(s *state, cmd command, user database.User) error {
-	userFollows, err := s.db.GetFeedFollowsForUser(context.Background(), s.cfg.CurrentUserName)
+func handleFollowsForUser(ctx context.Context, s *state, cmd command, user database.User) error {
+	userFollows, err := s.db.GetFeedFollowsForUser(ctx, s.cfg.CurrentUserName)
 	if err != nil {
 		return fmt.Errorf("could not get the follow list: %w", err)
 	}
@@ -73,7 +54,7 @@ func handleFollowsForUser(s *state, cmd command, user database.User) error {
 	return nil
 }
 
-func handleUnfollow(s *state, cmd command, user database.User) error {
+func handleUnfollow(ctx context.Context, s *state, cmd command, user database.User) error {
 	err := checkArgs(cmd, 1)
 	if err != nil {
 		return err
@@ -81,7 +62,7 @@ func handleUnfollow(s *state, cmd command, user database.User) error {
 
 	fUrl := cmd.args[0]
 
-	err = s.db.DeleteFollowForUser(context.Background(), database.DeleteFollowForUserParams{
+	err = s.db.DeleteFollowForUser(ctx, database.DeleteFollowForUserParams{
 		Url:  fUrl,
 		Name: user.Name,
 	})

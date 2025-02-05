@@ -13,7 +13,7 @@ import (
 	"github.com/masintxi/blog_aggregator/internal/database"
 )
 
-func handleAgg(s *state, cmd command) error {
+func handleAgg(ctx context.Context, s *state, cmd command) error {
 	err := checkArgs(cmd, 1)
 	if err != nil {
 		return err
@@ -29,40 +29,23 @@ func handleAgg(s *state, cmd command) error {
 	ticker := time.NewTicker(timeBetweenRequests)
 	defer ticker.Stop()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
-	defer s.cleanup()
 
 	numScrappers := 4
 	scrapeBatch(ctx, s, numScrappers)
 
 	for {
-		log.Printf("Aggregator waiting for next event...")
 		select {
 		case <-ticker.C:
-			log.Printf("Ticker triggered, starting new batch...")
 			scrapeBatch(ctx, s, numScrappers)
-		case newFeed, ok := <-s.newFeeds:
-			log.Printf("Received something on newFeeds channel, ok=%v", ok)
-			if !ok {
-				return nil
-			}
-			log.Printf("Processing new feed: %s", newFeed.Name)
-			go func(feed database.Feed) {
-				if err := scrapeFeed(ctx, s.db, feed); err != nil {
-					log.Printf("Failed to scrape new feed: %v", err)
-				}
-			}(newFeed)
 		case <-ctx.Done():
-			log.Printf("Context cancelled, shutting down...")
 			return nil
 		}
 	}
 }
 
 func scrapeBatch(ctx context.Context, s *state, numWorkers int) {
-	log.Printf("Starting new batch scrape with %d workers", numWorkers)
 	feeds, err := s.db.ListFeeds(ctx)
 	if err != nil {
 		log.Printf("Could not fetch feeds: %v", err)
@@ -78,14 +61,12 @@ func scrapeBatch(ctx context.Context, s *state, numWorkers int) {
 		go func(workerID int) {
 			defer wg.Done()
 			for feedInfo := range feedChan {
-				fmt.Printf("Worker %d: going for the <%s> feed\n", workerID, feedInfo.Url)
-
+				//fmt.Printf("Worker %d: going for the <%s> feed\n", workerID, feedInfo.Url)
 				err := scrapeFeed(ctx, s.db, feedInfo)
 				if err != nil {
 					remainingFeeds <- feedInfo
 					continue
 				}
-
 				//fmt.Printf("Worker %d: fetched the posts of the <%s> feed\n", workerID, feedInfo.Name)
 			}
 		}(i)
@@ -100,32 +81,31 @@ func scrapeBatch(ctx context.Context, s *state, numWorkers int) {
 
 	close(remainingFeeds)
 
-	// Process any remaining feeds
 	if len(remainingFeeds) > 0 {
-		log.Printf("%d feeds need to be reprocessed:", len(remainingFeeds))
+		log.Printf(">> %d feeds need to be reprocessed:", len(remainingFeeds))
 		var remainingFeedsList []database.Feed
 		for feed := range remainingFeeds {
 			remainingFeedsList = append(remainingFeedsList, feed)
 		}
 
 		for i, remFeed := range remainingFeedsList {
-			log.Printf("[%d/%d] Failed feed: %s (URL: %s)",
+			log.Printf(">> [%d/%d] Failed feed: <%s> (URL: <%s>)",
 				i+1, len(remainingFeedsList), remFeed.Name, remFeed.Url)
 		}
 	}
+	fmt.Println("----------------------------------------------------------")
 }
 
 func scrapeFeed(ctx context.Context, db *database.Queries, feedInfo database.Feed) error {
 	err := db.MarkFeedFetched(ctx, feedInfo.ID)
 	if err != nil {
-		log.Printf("Could not mark feed <%s>: %v", feedInfo.Name, err)
+		log.Printf(">> Could not mark feed <%s>: %v", feedInfo.Name, err)
 		return err
 	}
-	//fmt.Printf("feed <%s> marked as fetched\n", feedInfo.Url)
 
 	feed, err := fetchFeed(ctx, feedInfo.Url)
 	if err != nil {
-		log.Printf("Could not fetch the feed <%s>: %v", feedInfo.Name, err)
+		log.Printf(">> Could not fetch the feed <%s>: %v", feedInfo.Name, err)
 		return err
 	}
 
@@ -148,7 +128,7 @@ func scrapeFeed(ctx context.Context, db *database.Queries, feedInfo database.Fee
 			if strings.Contains(err.Error(), "duplicate key") {
 				continue
 			}
-			log.Printf("something went wrong... %v", err)
+			log.Printf(">> something went wrong... %v", err)
 			continue
 		}
 		log.Printf("post <%s> created successfully", post.Url)

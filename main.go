@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
@@ -11,10 +12,8 @@ import (
 )
 
 type state struct {
-	db       *database.Queries
-	cfg      *config.Config
-	newFeeds chan database.Feed
-	done     chan struct{}
+	db  *database.Queries
+	cfg *config.Config
 }
 
 func main() {
@@ -31,14 +30,14 @@ func main() {
 	defer db.Close()
 
 	programState := &state{
-		db:       database.New(db),
-		cfg:      &cfg,
-		newFeeds: make(chan database.Feed, 100),
-		done:     make(chan struct{}),
+		db:  database.New(db),
+		cfg: &cfg,
 	}
 
+	ctx := context.Background()
+
 	cmds := commands{
-		regisCommands: make(map[string]func(*state, command) error),
+		regisCommands: make(map[string]func(context.Context, *state, command) error),
 	}
 	cmds.register("login", handlerLogin)
 	cmds.register("register", registerUser)
@@ -59,7 +58,7 @@ func main() {
 	}
 	cmd := command{os.Args[1], os.Args[2:]}
 
-	if err := cmds.run(programState, cmd); err != nil {
+	if err := cmds.run(ctx, programState, cmd); err != nil {
 		log.Fatalf("error: %v\n", err)
 		return
 	}

@@ -10,14 +10,14 @@ import (
 	"github.com/masintxi/blog_aggregator/internal/database"
 )
 
-func handlerLogin(s *state, cmd command) error {
+func handlerLogin(ctx context.Context, s *state, cmd command) error {
 	err := checkArgs(cmd, 1)
 	if err != nil {
 		return err
 	}
 	userName := cmd.args[0]
 
-	_, err = s.db.GetUser(context.Background(), userName)
+	_, err = s.db.GetUser(ctx, userName)
 	if err != nil {
 		return fmt.Errorf("the user <%v> does not exists in the database", userName)
 	}
@@ -30,7 +30,7 @@ func handlerLogin(s *state, cmd command) error {
 	return nil
 }
 
-func registerUser(s *state, cmd command) error {
+func registerUser(ctx context.Context, s *state, cmd command) error {
 	err := checkArgs(cmd, 1)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func registerUser(s *state, cmd command) error {
 		Name:      userName,
 	}
 
-	user, err := s.db.CreateUser(context.Background(), userParams)
+	user, err := s.db.CreateUser(ctx, userParams)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate") {
 			return fmt.Errorf("the user <%v> already exists in the database", userName)
@@ -59,8 +59,8 @@ func registerUser(s *state, cmd command) error {
 	return nil
 }
 
-func getUsersList(s *state, cmd command) error {
-	users, err := s.db.ListUsers(context.Background())
+func getUsersList(ctx context.Context, s *state, cmd command) error {
+	users, err := s.db.ListUsers(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to retrive the list of users")
 	}
@@ -80,8 +80,8 @@ func getUsersList(s *state, cmd command) error {
 	return nil
 }
 
-func resetUsersTable(s *state, cmd command) error {
-	err := s.db.ResetDB(context.Background())
+func resetUsersTable(ctx context.Context, s *state, cmd command) error {
+	err := s.db.ResetDB(ctx)
 	if err != nil {
 		return fmt.Errorf("error reseting the database: %v", err)
 	}
