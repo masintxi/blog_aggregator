@@ -8,6 +8,34 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Extracts and cleans content while removing only the first <div> block after each <!-- BREAK X -->
+func extractAndCombineHTML(input string) string {
+	// Regular expression to find break markers like <!-- BREAK 1 -->, <!-- BREAK 2 -->, etc.
+	breakRegex := regexp.MustCompile(`<!-- BREAK \d+ -->`)
+
+	// Split the input string into sections based on the break markers
+	splits := breakRegex.Split(input, -1)
+
+	// Slice to collect cleaned sections
+	var sections []string
+
+	// Process each section after the markers
+	for i, section := range splits {
+		if i == 0 {
+			// First section (before any marker), keep as is
+			sections = append(sections, cleanHTML(section, false))
+			continue
+		}
+
+		// Remove only the first <div> block after each marker
+		cleanedSection := cleanHTML(section, true)
+		sections = append(sections, cleanedSection)
+	}
+
+	// Join all sections with a newline
+	return strings.Join(sections, "\n")
+}
+
 // Cleans HTML while removing only the first <div> block after the break marker
 func cleanHTML(input string, removeFirstDiv bool) string {
 	doc, err := html.Parse(strings.NewReader(input))
