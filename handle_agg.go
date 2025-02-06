@@ -14,14 +14,13 @@ import (
 )
 
 func handleAgg(ctx context.Context, s *state, cmd command) error {
-	err := checkArgs(cmd, 1)
-	if err != nil {
-		return err
-	}
-
-	timeBetweenRequests, err := time.ParseDuration(cmd.args[0])
-	if err != nil {
-		return fmt.Errorf("failed to parse the duration <%v>: %w", cmd.args[0], err)
+	timeBetweenRequests := 30 * time.Second
+	if len(cmd.args) > 0 {
+		duration, err := time.ParseDuration(cmd.args[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse the time interval <%v>: %w", cmd.args[0], err)
+		}
+		timeBetweenRequests = duration
 	}
 
 	log.Printf("Collecting feeds every %s...", timeBetweenRequests)
